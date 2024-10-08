@@ -3,19 +3,21 @@ from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 import openai
 import logging
+from dotenv import load_dotenv
+
+
+from openai import OpenAI
+
+# Load environment variables from .env file
+load_dotenv()
+
+client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
+
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except ImportError:
-    logger.warning("python-dotenv is not installed. Environment variables must be set manually.")
-
-# Initialize the OpenAI API key
-openai.api_key = os.environ.get("OPENAI_API_KEY")
 
 # Initialize the Slack app
 app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
@@ -34,7 +36,7 @@ def get_chatgpt_response(user_input, channel_id):
         conversations[channel_id] = conversations[channel_id][-11:]
     
     try:
-        response = openai.ChatCompletion.create(
+        response = client.completions.create(
             model="gpt-3.5-turbo",
             messages=conversations[channel_id]
         )
