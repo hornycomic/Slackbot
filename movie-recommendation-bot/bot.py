@@ -1,23 +1,19 @@
 import os
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
-import openai
 import logging
 from dotenv import load_dotenv
-
-
 from openai import OpenAI
 
 # Load environment variables from .env file
 load_dotenv()
 
-client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
-
-
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+# Initialize OpenAI client
+client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
 
 # Initialize the Slack app
 app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
@@ -36,11 +32,11 @@ def get_chatgpt_response(user_input, channel_id):
         conversations[channel_id] = conversations[channel_id][-11:]
     
     try:
-        response = client.completions.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=conversations[channel_id]
         )
-        chatgpt_reply = response["choices"][0]["message"]["content"]
+        chatgpt_reply = response.choices[0].message.content
         conversations[channel_id].append({"role": "assistant", "content": chatgpt_reply})
         return chatgpt_reply
     except Exception as e:
@@ -55,12 +51,14 @@ def handle_message_events(body, logger):
 def message_handler(message, say):
     try:
         logger.info(f"Received message: {message}")
-        user_input = message['text']
-        channel_id = message['channel']
-        logger.info(f"Processing message: '{user_input}' in channel: {channel_id}")
-        response = get_chatgpt_response(user_input, channel_id)
-        logger.info(f"Sending response: {response}")
-        say(response)
+        # Only respond to messages that aren't from a bot
+        if not message.get('bot_id'):
+            user_input = message['text']
+            channel_id = message['channel']
+            logger.info(f"Processing message: '{user_input}' in channel: {channel_id}")
+            response = get_chatgpt_response(user_input, channel_id)
+            logger.info(f"Sending response: {response}")
+            say(response)
     except Exception as e:
         logger.error(f"Error in message_handler: {str(e)}")
         say("I'm sorry, I encountered an error while processing your message.")
